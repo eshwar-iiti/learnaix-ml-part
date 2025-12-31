@@ -69,3 +69,10 @@ async def flashcards(file: UploadFile = File(...)):
     return {
         "flashcards": cards
     }
+
+# Add this import at the top
+from google_classroom import router as google_router
+
+# Add this line where you create your FastAPI app
+# (after app = FastAPI())
+app.include_router(google_router)

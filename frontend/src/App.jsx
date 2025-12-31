@@ -1,12 +1,16 @@
 import { useState } from "react";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Flashcards from "./Flashcards";
+import GoogleClassroom from "./GoogleClassroom";
+import AuthCallback from "./AuthCallback";
+import CourseDetail from "./CourseDetail";
 import 'katex/dist/katex.min.css';
 
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 
-function App() {
+function HomePage() {
   const [file, setFile] = useState(null);
   const [summary, setSummary] = useState("");
   const [loading, setLoading] = useState(false);
@@ -81,7 +85,24 @@ function App() {
 
       <h2>Flashcards</h2>
       <Flashcards file={file} />
+
+      {/* 🔹 GOOGLE CLASSROOM SECTION */}
+      <hr style={{ margin: "40px 0" }} />
+      
+      <GoogleClassroom />
     </div>
+  );
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/course/:courseId" element={<CourseDetail />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
