@@ -7,7 +7,8 @@ from gemini import summarize_text  # your existing summarization function
 import google.generativeai as genai
 from dotenv import load_dotenv
 from flashcards import generate_flashcards
-
+from quiz import generate_quiz
+import pdfplumber
 # Load Gemini API key from .env
 load_dotenv()
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
@@ -97,6 +98,28 @@ async def flashcards(file: UploadFile = File(...)):
     return {
         "flashcards": cards
     }
+
+async def process_file(file: UploadFile):
+    if file.content_type != "application/pdf":
+        return {"error": "Only PDF files allowed"}
+
+    # text = extract_text_from_pdf(file.file)
+    pdf_url = upload_pdf_to_cloudinary(file)
+
+    # text = extract_text_from_pdf(file_path)
+    text = extract_text_from_pdf_url(pdf_url)
+    return text
+
+@app.post("/quiz")
+async def quiz_endpoint(file: UploadFile = File(...)):
+    text = await process_file(file)
+
+    print(f"DEBUG: Extracting quiz from {len(text)} chars...")
+
+    # Generate Quiz
+    quiz_data = generate_quiz(text, n_questions=5)
+
+    return {"quiz": quiz_data}
 
 # Add this import at the top
 from google_classroom import router as google_router
