@@ -2,7 +2,7 @@ from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 import shutil
 import os
-from pdf_utils import extract_text_from_pdf
+from pdf_utils import extract_text_from_pdf , extract_text_from_pdf_url
 from gemini import summarize_text  # your existing summarization function
 import google.generativeai as genai
 from dotenv import load_dotenv
@@ -11,53 +11,81 @@ from flashcards import generate_flashcards
 # Load Gemini API key from .env
 load_dotenv()
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+import cloudinary
+import cloudinary.uploader
+
+cloudinary.config(
+    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+    api_key=os.getenv("CLOUDINARY_API_KEY"),
+    api_secret=os.getenv("CLOUDINARY_API_SECRET"),
+    secure=True
+)
+def upload_pdf_to_cloudinary(file):
+    result = cloudinary.uploader.upload(
+        file.file,
+        resource_type="raw",   # IMPORTANT for PDFs
+        folder="pdf_uploads"
+    )
+    return result["secure_url"]
 
 app = FastAPI()
 
 # Allow frontend access
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:8000/summarize",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-UPLOAD_DIR = "uploads"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+# UPLOAD_DIR = "uploads"
+# os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
 @app.get("/")
 def root():
     return {"status": "backend running"}
 
+from fastapi import HTTPException
 
 @app.post("/summarize")
 async def summarize_pdf(file: UploadFile = File(...)):
-    if file.content_type != "application/pdf":
-        return {"error": "Only PDF files allowed"}
+    try:
+        if file.content_type != "application/pdf":
+            raise HTTPException(status_code=400, detail="Only PDF files allowed")
 
-    file_path = os.path.join(UPLOAD_DIR, file.filename)
-    with open(file_path, "wb") as f:
-        shutil.copyfileobj(file.file, f)
+        pdf_url = upload_pdf_to_cloudinary(file)
 
-    text = extract_text_from_pdf(file_path)
+        text = extract_text_from_pdf_url(pdf_url)
+        if not text.strip():
+            raise HTTPException(status_code=400, detail="No text found in PDF")
 
-    if len(text.strip()) == 0:
-        return {"error": "No text found in PDF"}
+        text = text[:10000]
+        summary = summarize_text(text)
 
-    text = text[:10000]  # limit text length
+        return {"summary": summary}
 
-    summary = summarize_text(text)
-
-    return {"summary": summary}
+    except Exception as e:
+        print("ERROR:", e)
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/flashcards")
 async def flashcards(file: UploadFile = File(...)):
     if file.content_type != "application/pdf":
         return {"error": "Only PDF files allowed"}
 
-    text = extract_text_from_pdf(file.file)
+    # text = extract_text_from_pdf(file.file)
+    pdf_url = upload_pdf_to_cloudinary(file)
 
+    # text = extract_text_from_pdf(file_path)
+    text = extract_text_from_pdf_url(pdf_url)
     if not text.strip():
         return {"error": "No text found in PDF"}
 
