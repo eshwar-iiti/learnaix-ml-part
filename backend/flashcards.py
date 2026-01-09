@@ -1,13 +1,13 @@
 import os
-from google import genai
-from google.genai import types
+import google.generativeai as genai
 from dotenv import load_dotenv
 import json
 import re
 
 load_dotenv()
 
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+model = genai.GenerativeModel("gemini-flash-latest")
 
 def safe_json_loads(raw: str):
     """
@@ -40,9 +40,7 @@ def generate_flashcards(notes: str, n_cards: int = 10):
     {notes}
     """
 
-    response = client.models.generate_content(
-                model = "gemini-flash-latest",
-                contents=prompt)
+    response = model.generate_content(prompt)
     raw = response.text.strip()
 
     raw = re.sub(r"^```json\s*", "", raw)

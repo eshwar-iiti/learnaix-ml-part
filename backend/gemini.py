@@ -1,13 +1,13 @@
 import os
-from google import genai
-from google.genai import types
+import google.generativeai as genai
 from dotenv import load_dotenv
 
 load_dotenv()
 
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+model = genai.GenerativeModel("gemini-flash-latest")
 
-def summarize_text(text):
+def summarize_text(text, user_prompt):
     prompt = f"""
     You are an academic assistant.
 
@@ -16,15 +16,14 @@ def summarize_text(text):
     - Key concepts
     - Important definitions
     - Main results or conclusions
+    - Here is the user provided prompt: {user_prompt}
 
     Content:
     {text[:12000]}
     """
 
     print("Calling Gemini...")
-    response = client.models.generate_content(
-                model = "gemini-flash-latest",
-                contents=prompt)
+    response = model.generate_content(prompt)
     print("Gemini response received")
 
     return response.text

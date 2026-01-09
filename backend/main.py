@@ -1,33 +1,15 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import shutil
+from pydantic import BaseModel
 import os
-from pdf_utils import extract_text_from_pdf , extract_text_from_pdf_url
-from gemini import summarize_text  # your existing summarization function
-import google.generativeai as genai
+from pdf_utils import extract_text_from_pdf_url
+from gemini import summarize_text
 from dotenv import load_dotenv
 from flashcards import generate_flashcards
 from quiz import generate_quiz
-import pdfplumber
-# Load Gemini API key from .env
-load_dotenv()
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-import cloudinary
-import cloudinary.uploader
 
-cloudinary.config(
-    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
-    api_key=os.getenv("CLOUDINARY_API_KEY"),
-    api_secret=os.getenv("CLOUDINARY_API_SECRET"),
-    secure=True
-)
-def upload_pdf_to_cloudinary(file):
-    result = cloudinary.uploader.upload(
-        file.file,
-        resource_type="raw",   # IMPORTANT for PDFs
-        folder="pdf_uploads"
-    )
-    return result["secure_url"]
+# Load environment variables
+load_dotenv()
 
 app = FastAPI()
 
@@ -56,20 +38,29 @@ def root():
 
 from fastapi import HTTPException
 
+class SummarizeRequest(BaseModel):
+    fileURL: str
+    user_prompt: str
+
+class FlashcardsRequest(BaseModel):
+    fileURL: str
+    n_cards: int = 10  # default to 10 flashcards if not specified
+
+class QuizRequest(BaseModel):
+    fileURL: str
+    n_questions: int = 5  # default to 5 questions if not specified
+
 @app.post("/summarize")
-async def summarize_pdf(file: UploadFile = File(...)):
+async def summarize_pdf(request: SummarizeRequest):
     try:
-        if file.content_type != "application/pdf":
-            raise HTTPException(status_code=400, detail="Only PDF files allowed")
-
-        pdf_url = upload_pdf_to_cloudinary(file)
-
-        text = extract_text_from_pdf_url(pdf_url)
+        print(request)
+        text = extract_text_from_pdf_url(request.fileURL)
+        user_prompt = request.user_prompt
         if not text.strip():
             raise HTTPException(status_code=400, detail="No text found in PDF")
 
         text = text[:10000]
-        summary = summarize_text(text)
+        summary = summarize_text(text, user_prompt)
 
         return {"summary": summary}
 
@@ -78,48 +69,40 @@ async def summarize_pdf(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/flashcards")
-async def flashcards(file: UploadFile = File(...)):
-    if file.content_type != "application/pdf":
-        return {"error": "Only PDF files allowed"}
+async def flashcards(request: FlashcardsRequest):
+    try:
+        text = extract_text_from_pdf_url(request.fileURL)
+        if not text.strip():
+            raise HTTPException(status_code=400, detail="No text found in PDF")
 
-    # text = extract_text_from_pdf(file.file)
-    pdf_url = upload_pdf_to_cloudinary(file)
+        # limit tokens but keep coverage
+        text = text[:12000]
 
-    # text = extract_text_from_pdf(file_path)
-    text = extract_text_from_pdf_url(pdf_url)
-    if not text.strip():
-        return {"error": "No text found in PDF"}
+        cards = generate_flashcards(text, n_cards=request.n_cards)
 
-    # limit tokens but keep coverage
-    text = text[:12000]
+        return {"flashcards": cards}
 
-    cards = generate_flashcards(text, n_cards=10)
-
-    return {
-        "flashcards": cards
-    }
-
-async def process_file(file: UploadFile):
-    if file.content_type != "application/pdf":
-        return {"error": "Only PDF files allowed"}
-
-    # text = extract_text_from_pdf(file.file)
-    pdf_url = upload_pdf_to_cloudinary(file)
-
-    # text = extract_text_from_pdf(file_path)
-    text = extract_text_from_pdf_url(pdf_url)
-    return text
+    except Exception as e:
+        print("ERROR:", e)
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/quiz")
-async def quiz_endpoint(file: UploadFile = File(...)):
-    text = await process_file(file)
+async def quiz_endpoint(request: QuizRequest):
+    try:
+        text = extract_text_from_pdf_url(request.fileURL)
+        if not text.strip():
+            raise HTTPException(status_code=400, detail="No text found in PDF")
 
-    print(f"DEBUG: Extracting quiz from {len(text)} chars...")
+        print(f"DEBUG: Extracting quiz from {len(text)} chars...")
 
-    # Generate Quiz
-    quiz_data = generate_quiz(text, n_questions=5)
+        # Generate Quiz
+        quiz_data = generate_quiz(text, n_questions=request.n_questions)
+    
+        return {"quiz": quiz_data}
 
-    return {"quiz": quiz_data}
+    except Exception as e:
+        print("ERROR:", e)
+        raise HTTPException(status_code=500, detail=str(e))
 
 from mention import get_response
 

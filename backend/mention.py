@@ -1,9 +1,11 @@
 import os
-from google import genai
-from google.genai import types
+import google.generativeai as genai
+from dotenv import load_dotenv
 
+load_dotenv()
 
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+model = genai.GenerativeModel("gemini-flash-latest")
 
 
 def get_response(text: str, memory: str = ""):
@@ -38,10 +40,7 @@ def get_response(text: str, memory: str = ""):
         <your summary>
         """
 
-    response = client.models.generate_content(
-        model="gemini-flash-latest",
-        contents=prompt
-    )
+    response = model.generate_content(prompt)
 
     raw_text = response.text.strip()
 
