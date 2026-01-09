@@ -7,6 +7,8 @@ from gemini import summarize_text
 from dotenv import load_dotenv
 from flashcards import generate_flashcards
 from quiz import generate_quiz
+from mention import get_response
+from fastapi import HTTPException
 
 # Load environment variables
 load_dotenv()
@@ -36,7 +38,7 @@ app.add_middleware(
 def root():
     return {"status": "backend running"}
 
-from fastapi import HTTPException
+
 
 class SummarizeRequest(BaseModel):
     fileURL: str
@@ -97,14 +99,12 @@ async def quiz_endpoint(request: QuizRequest):
 
         # Generate Quiz
         quiz_data = generate_quiz(text, n_questions=request.n_questions)
-    
+
         return {"quiz": quiz_data}
 
     except Exception as e:
         print("ERROR:", e)
         raise HTTPException(status_code=500, detail=str(e))
-
-from mention import get_response
 
 @app.post("/mention")
 async def mention(payload: dict):
