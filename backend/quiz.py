@@ -9,24 +9,20 @@ warnings.filterwarnings(
     message="Field name .* shadows an attribute in parent .*"
 )
 
-# Load environment variables
+# load environment variables
 load_dotenv()
 
-# Initialize the new Client
-# Ensure GEMINI_API_KEY is in your .env file
+#load gemini key
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 
 def generate_quiz(text: str, n_questions: int = 5):
     print("\n--- QUIZ GENERATION START ---")
 
-    # 1. Input Validation
     if not text or len(text.strip()) < 50:
-        print("❌ ERROR: Text is empty or too short.")
+        print("ERROR: Text is empty or too short.")
         return []
 
-    # 2. Define the Schema for Strict JSON Output
-    # The new SDK handles schemas more cleanly using the 'response_schema' config
     quiz_schema = {
         "type": "ARRAY",
         "items": {
@@ -62,7 +58,7 @@ def generate_quiz(text: str, n_questions: int = 5):
     """
 
     try:
-        print("📡 Sending request to Gemini (New SDK)...")
+        print("Generating Quiz")
 
         response = client.models.generate_content(
             model="gemini-flash-latest",
@@ -75,22 +71,14 @@ def generate_quiz(text: str, n_questions: int = 5):
             )
         )
 
-        # 3. Parse Response
-        # In the new SDK, response.text contains the raw JSON string
         if not response.text:
-            print("❌ ERROR: Empty response from AI.")
+            print("ERROR: Empty response from AI.")
             return []
 
         parsed_data = json.loads(response.text)
-        print(f"✅ Generated {len(parsed_data)} questions.")
+        print(f"Generated {len(parsed_data)} questions.")
         return parsed_data
 
     except Exception as e:
-        print(f"❌ QUIZ ERROR: {e}")
+        print(f"QUIZ ERROR: {e}")
         return []
-from pdf_utils import extract_text_from_pdf
-txt = extract_text_from_pdf(r"C:\Users\ESHWAR\OneDrive\Desktop\Programs\gdsc\backend\uploads\AI_ml (1).pdf")
-
-# print(generate_quiz(txt,2))
-# --- TEST BLOCK ---
-# This ensures that when you run 'python quiz.py', it actually DOES something.

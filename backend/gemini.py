@@ -1,11 +1,11 @@
 import os
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from dotenv import load_dotenv
 
 load_dotenv()
 
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-model = genai.GenerativeModel("gemini-flash-latest")
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 def summarize_text(text):
     prompt = f"""
@@ -22,7 +22,9 @@ def summarize_text(text):
     """
 
     print("Calling Gemini...")
-    response = model.generate_content(prompt)
+    response = client.models.generate_content(
+                model = "gemini-flash-latest",
+                contents=prompt)
     print("Gemini response received")
 
     return response.text

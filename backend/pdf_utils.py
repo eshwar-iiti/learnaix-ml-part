@@ -1,3 +1,5 @@
+import requests
+import io
 import pdfplumber
 
 def extract_text_from_pdf(file_path):
@@ -6,10 +8,6 @@ def extract_text_from_pdf(file_path):
         for page in pdf.pages:
             text += page.extract_text() + "\n"
     return text
-
-import requests
-import io
-import pdfplumber
 
 def extract_text_from_pdf_url(pdf_url):
     response = requests.get(pdf_url)

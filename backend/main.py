@@ -121,6 +121,21 @@ async def quiz_endpoint(file: UploadFile = File(...)):
 
     return {"quiz": quiz_data}
 
+from mention import get_response
+
+@app.post("/mention")
+async def mention(payload: dict):
+    text = payload["text"]
+    memory = payload.get("memory", "")
+
+    answer, summary = get_response(text, memory)
+
+    return {
+        "response": answer,
+        "summary": summary
+    }
+
+
 # Add this import at the top
 from google_classroom import router as google_router
 

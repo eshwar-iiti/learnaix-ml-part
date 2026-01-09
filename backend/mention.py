@@ -1,0 +1,66 @@
+import os
+from google import genai
+from google.genai import types
+
+
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+
+
+def get_response(text: str, memory: str = ""):
+    """
+    text   : current @AI mention message
+    memory : privacy-safe summary from previous turns
+    """
+
+    prompt = f"""
+        You are an AI assistant helping users in a group chat.
+
+        IMPORTANT RULES:
+        - Respect privacy
+        - Do NOT include usernames or personal details
+        - Use only the provided summary as memory
+
+        Previous context summary:
+        {memory if memory else "None"}
+
+        User message:
+        {text}
+
+        TASK:
+        1. Write a helpful response to the user.
+        2. Write a short privacy-safe summary of ONLY the new information.
+
+        FORMAT YOUR OUTPUT EXACTLY AS:
+        RESPONSE:
+        <your response>
+
+        SUMMARY:
+        <your summary>
+        """
+
+    response = client.models.generate_content(
+        model="gemini-flash-latest",
+        contents=prompt
+    )
+
+    raw_text = response.text.strip()
+
+    # 🔹 Parse structured output safely
+    answer, summary = parse_output(raw_text)
+
+    return answer, summary
+
+
+def parse_output(text: str):
+    answer = ""
+    summary = ""
+
+    if "SUMMARY:" in text:
+        answer_part, summary_part = text.split("SUMMARY:", 1)
+        answer = answer_part.replace("RESPONSE:", "").strip()
+        summary = summary_part.strip()
+    else:
+        answer = text
+        summary = "No new long-term information."
+
+    return answer, summary
