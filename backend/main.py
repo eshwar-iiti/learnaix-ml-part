@@ -52,6 +52,10 @@ class QuizRequest(BaseModel):
     fileURL: str
     n_questions: int = 5  # default to 5 questions if not specified
 
+class ChatbotRequest(BaseModel):
+    user_prompt: str
+    memory: str = ""
+
 @app.post("/summarize")
 async def summarize_pdf(request: SummarizeRequest):
     try:
@@ -118,6 +122,17 @@ async def mention(payload: dict):
         "summary": summary
     }
 
+@app.post("/chatbot")
+async def chatbot(request: ChatbotRequest):
+    try:
+        answer, summary = get_response(request.user_prompt, request.memory)
+        return {
+            "response": answer,
+            "summary": summary
+        }
+    except Exception as e:
+        print("ERROR:", e)
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Add this import at the top
 from google_classroom import router as google_router

@@ -31,7 +31,7 @@ def get_response(text: str, memory: str = ""):
         TASK:
         1. Write a helpful response to the user.
         2. Write a short privacy-safe summary of ONLY the new information.
-
+        3. Give your responses in a teaching tone and make sure to reply in markdown format for the summary.
         FORMAT YOUR OUTPUT EXACTLY AS:
         RESPONSE:
         <your response>
@@ -46,7 +46,8 @@ def get_response(text: str, memory: str = ""):
 
     # 🔹 Parse structured output safely
     answer, summary = parse_output(raw_text)
-
+    print("ANSWER:", answer)
+    print("SUMMARY:", summary)
     return answer, summary
 
 
